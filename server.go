@@ -158,6 +158,9 @@ func setup() *web.Mux {
 		Config.selifPath = Config.selifPath + "/"
 	}
 
+	backends.Limits.MaxDurationTime = Config.maxDurationTime
+	backends.Limits.MaxDurationSize = Config.maxDurationSize
+	backends.Limits.MaxSize = Config.maxSize
 	if Config.s3Bucket != "" {
 		storageBackend = s3.NewS3Backend(Config.s3Bucket, Config.s3Region, Config.s3Endpoint, Config.s3ForcePathStyle)
 	} else {

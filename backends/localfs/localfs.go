@@ -11,6 +11,7 @@ import (
 
 	"github.com/andreimarcu/linx-server/backends"
 	"github.com/andreimarcu/linx-server/helpers"
+	"github.com/andreimarcu/linx-server/expiry"
 )
 
 type LocalfsBackend struct {
@@ -127,7 +128,7 @@ func (b LocalfsBackend) writeMetadata(key string, metadata backends.Metadata) er
 	return nil
 }
 
-func (b LocalfsBackend) Put(key string, r io.Reader, expiry time.Time, deleteKey, accessKey string, srcIp string) (m backends.Metadata, err error) {
+func (b LocalfsBackend) Put(key string, r io.Reader, expiryTime time.Duration, deleteKey, accessKey string, srcIp string) (m backends.Metadata, err error) {
 	filePath := path.Join(b.filesPath, key)
 
 	dst, err := os.Create(filePath)
@@ -143,6 +144,25 @@ func (b LocalfsBackend) Put(key string, r io.Reader, expiry time.Time, deleteKey
 	} else if err != nil {
 		os.Remove(filePath)
 		return m, err
+	} else if bytes >= backends.Limits.MaxSize {
+		os.Remove(filePath)
+		return m, backends.FileTooLargeError
+	}
+
+	var fileExpiry time.Time
+	maxDurationTime := time.Duration(backends.Limits.MaxDurationTime) * time.Second
+	if expiryTime == 0 {
+		if bytes > backends.Limits.MaxDurationSize && maxDurationTime > 0 {
+			fileExpiry = time.Now().Add(maxDurationTime)
+		} else {
+			fileExpiry = expiry.NeverExpire
+		}
+	} else {
+		if bytes > backends.Limits.MaxDurationSize && expiryTime > maxDurationTime {
+			fileExpiry = time.Now().Add(maxDurationTime)
+		} else {
+			fileExpiry = time.Now().Add(expiryTime)
+		}
 	}
 
 	dst.Seek(0, 0)
@@ -153,7 +173,7 @@ func (b LocalfsBackend) Put(key string, r io.Reader, expiry time.Time, deleteKey
 	}
 	dst.Seek(0, 0)
 
-	m.Expiry = expiry
+	m.Expiry = fileExpiry
 	m.DeleteKey = deleteKey
 	m.AccessKey = accessKey
 	m.SrcIp = srcIp

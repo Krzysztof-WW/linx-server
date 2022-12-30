@@ -75,6 +75,18 @@ func uploadPostHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 				upReq.filename = part.FileName()
 				defer part.Close()
 				break
+			} else if part.FormName() == "expires" {
+				if b, err := io.ReadAll(part); err == nil {
+					upReq.expiry = parseExpiry(string(b))
+				}
+			} else if part.FormName() == "randomize" {
+				if b, err := io.ReadAll(part); err == nil && string(b) == "true" {
+					upReq.randomBarename = true
+				}
+			} else if part.FormName() == accessKeyParamName {
+				if b, err := io.ReadAll(part); err == nil {
+					upReq.accessKey = string(b)
+				}
 			}
 			part.Close()
 		}
@@ -92,13 +104,13 @@ func uploadPostHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 
 		upReq.src = strings.NewReader(content)
 		upReq.filename = r.PostFormValue("filename") + "." + extension
+		upReq.expiry = parseExpiry(r.PostFormValue("expires"))
+		upReq.accessKey = r.PostFormValue(accessKeyParamName)
+		if r.PostFormValue("randomize") == "true" {
+			upReq.randomBarename = true
+		}
 	}
 
-	upReq.expiry = parseExpiry(r.PostFormValue("expires"))
-	upReq.accessKey = r.PostFormValue(accessKeyParamName)
-	if r.PostFormValue("randomize") == "true" {
-		upReq.randomBarename = true
-	}
 	upReq.srcIp = r.Header.Get("X-Forwarded-For")
 	upload, err := processUpload(upReq)
 

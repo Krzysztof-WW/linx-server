@@ -145,7 +145,7 @@ func uploadPutHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 	
 	defer r.Body.Close()
 	upReq.filename = c.URLParams["name"]
-	upReq.src = http.MaxBytesReader(w, r.Body, Config.maxSize)
+	upReq.src = r.Body
 	upReq.srcIp = r.Header.Get("X-Forwarded-For")
 	upload, err := processUpload(upReq)
 
@@ -213,7 +213,7 @@ func uploadRemote(c web.C, w http.ResponseWriter, r *http.Request) {
 	}
 	
 	upReq.filename = filepath.Base(grabUrl.Path)
-	upReq.src = http.MaxBytesReader(w, resp.Body, Config.maxSize)
+	upReq.src = resp.Body
 	upReq.deleteKey = r.FormValue("deletekey")
 	upReq.accessKey = r.FormValue(accessKeyParamName)
 	upReq.randomBarename = r.FormValue("randomize") == "yes"

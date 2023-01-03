@@ -12,7 +12,7 @@ type StorageBackend interface {
 	Exists(key string) (bool, error)
 	Head(key string) (Metadata, error)
 	Get(key string) (Metadata, io.ReadCloser, error)
-	Put(key string, r io.Reader, expiry time.Duration, deleteKey, accessKey string, srcIp string) (Metadata, error)
+	Put(key string, r io.Reader, expiry time.Duration, deleteKey, accessKey string, srcIp string, originalName string) (Metadata, error)
 	PutMetadata(key string, m Metadata) error
 	ServeFile(key string, w http.ResponseWriter, r *http.Request) error
 	Size(key string) (int64, error)

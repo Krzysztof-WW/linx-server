@@ -338,7 +338,14 @@ func processUpload(upReq UploadRequest) (upload Upload, err error) {
 	if Config.disableAccessKey == true {
 		upReq.accessKey = ""
 	}
-	upload.Metadata, err = storageBackend.Put(upload.Filename, io.LimitReader(io.MultiReader(bytes.NewReader(header), upReq.src), Config.maxSize), upReq.expiry, upReq.deleteKey, upReq.accessKey, upReq.srcIp)
+
+  var original_filename string
+  if randomize {
+    original_filename = ""
+  } else {
+    original_filename = upReq.filename
+  }
+	upload.Metadata, err = storageBackend.Put(upload.Filename, io.LimitReader(io.MultiReader(bytes.NewReader(header), upReq.src), Config.maxSize), upReq.expiry, upReq.deleteKey, upReq.accessKey, upReq.srcIp, original_filename)
 	if err != nil {
 		return upload, err
 	}

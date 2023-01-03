@@ -51,6 +51,10 @@ func fileServeHandler(c web.C, w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", metadata.Mimetype)
 	w.Header().Set("Content-Length", strconv.FormatInt(metadata.Size, 10))
+  if metadata.OriginalName != "" {
+    w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", metadata.OriginalName))
+  }
+  //w.Header().Set("Content-Disposition", "attachment; filename=\"abc\"")
 	w.Header().Set("Etag", fmt.Sprintf("\"%s\"", metadata.Sha256sum))
 	w.Header().Set("Cache-Control", "public, no-cache")
 

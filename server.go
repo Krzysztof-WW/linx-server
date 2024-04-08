@@ -19,7 +19,6 @@ import (
 	"github.com/andreimarcu/linx-server/auth/apikeys"
 	"github.com/andreimarcu/linx-server/backends"
 	"github.com/andreimarcu/linx-server/backends/localfs"
-	"github.com/andreimarcu/linx-server/backends/s3"
 	"github.com/andreimarcu/linx-server/cleanup"
 	"github.com/flosch/pongo2"
 	"github.com/vharitonsky/iniflags"
@@ -67,10 +66,6 @@ var Config struct {
 	remoteAuthFile            string
 	addHeaders                headerList
 	noDirectAgents            bool
-	s3Endpoint                string
-	s3Region                  string
-	s3Bucket                  string
-	s3ForcePathStyle          bool
 	forceRandomFilename       bool
 	accessKeyCookieExpiry     uint64
 	customPagesDir            string
@@ -161,13 +156,9 @@ func setup() *web.Mux {
 	backends.Limits.MaxDurationTime = Config.maxDurationTime
 	backends.Limits.MaxDurationSize = Config.maxDurationSize
 	backends.Limits.MaxSize = Config.maxSize
-	if Config.s3Bucket != "" {
-		storageBackend = s3.NewS3Backend(Config.s3Bucket, Config.s3Region, Config.s3Endpoint, Config.s3ForcePathStyle)
-	} else {
-		storageBackend = localfs.NewLocalfsBackend(Config.metaDir, Config.filesDir)
-		if Config.cleanupEveryMinutes > 0 {
-			go cleanup.PeriodicCleanup(time.Duration(Config.cleanupEveryMinutes)*time.Minute, Config.filesDir, Config.metaDir, Config.noLogs)
-		}
+  storageBackend = localfs.NewLocalfsBackend(Config.metaDir, Config.filesDir)
+  if Config.cleanupEveryMinutes > 0 {
+    go cleanup.PeriodicCleanup(time.Duration(Config.cleanupEveryMinutes)*time.Minute, Config.filesDir, Config.metaDir, Config.noLogs)
 
 	}
 
@@ -302,14 +293,6 @@ func main() {
 		"Add an arbitrary header to the response. This option can be used multiple times.")
 	flag.BoolVar(&Config.noDirectAgents, "nodirectagents", false,
 		"disable serving files directly for wget/curl user agents")
-	flag.StringVar(&Config.s3Endpoint, "s3-endpoint", "",
-		"S3 endpoint")
-	flag.StringVar(&Config.s3Region, "s3-region", "",
-		"S3 region")
-	flag.StringVar(&Config.s3Bucket, "s3-bucket", "",
-		"S3 bucket to use for files and metadata")
-	flag.BoolVar(&Config.s3ForcePathStyle, "s3-force-path-style", false,
-		"Force path-style addressing for S3 (e.g. https://s3.amazonaws.com/linx/example.txt)")
 	flag.BoolVar(&Config.forceRandomFilename, "force-random-filename", false,
 		"Force all uploads to use a random filename")
 	flag.Uint64Var(&Config.accessKeyCookieExpiry, "access-cookie-expiry", 0, "Expiration time for access key cookies in seconds (set 0 to use session cookies)")

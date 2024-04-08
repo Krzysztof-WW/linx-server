@@ -8,10 +8,13 @@ import (
 	"os"
 	"path"
 	"time"
+	"encoding/hex"
 
 	"github.com/andreimarcu/linx-server/backends"
 	"github.com/andreimarcu/linx-server/helpers"
 	"github.com/andreimarcu/linx-server/expiry"
+	"github.com/minio/sha256-simd"
+	"github.com/gabriel-vasile/mimetype"
 )
 
 type LocalfsBackend struct {
@@ -134,13 +137,14 @@ func (b LocalfsBackend) writeMetadata(key string, metadata backends.Metadata) er
 func (b LocalfsBackend) Put(key string, r io.Reader, expiryTime time.Duration, deleteKey, accessKey string, srcIp string, originalName string) (m backends.Metadata, err error) {
 	filePath := path.Join(b.filesPath, key)
 
+	hasher := sha256.New()
 	dst, err := os.Create(filePath)
 	if err != nil {
 		return
 	}
 	defer dst.Close()
 
-	bytes, err := io.Copy(dst, r)
+	bytes, err := io.Copy(dst, io.TeeReader(r, hasher))
 	if bytes == 0 {
 		os.Remove(filePath)
 		return m, backends.FileEmptyError
@@ -169,13 +173,22 @@ func (b LocalfsBackend) Put(key string, r io.Reader, expiryTime time.Duration, d
 	}
 
 	dst.Seek(0, 0)
-	m, err = helpers.GenerateMetadata(dst)
+	// Get first 512 bytes for mimetype detection
+	header := make([]byte, 512)
+	headerlen, err := dst.Read(header)
 	if err != nil {
 		os.Remove(filePath)
 		return
 	}
+	// Use the bytes we extracted earlier and attempt to determine the file
+	// type
+	kind := mimetype.Detect(header[:headerlen])
+	m.Mimetype = kind.String()
+
 	dst.Seek(0, 0)
 
+  m.Size = bytes
+  m.Sha256sum = hex.EncodeToString(hasher.Sum(nil))
 	m.Expiry = fileExpiry
 	m.DeleteKey = deleteKey
 	m.AccessKey = accessKey
